@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+*.egg
+.pytest_cache/
+
+# 编译产物（wallx 的 CUDA 扩展在安装期重新编译；ascamera SDK 的 .so 是厂商预编译库，需保留）
+*.o
+wallx/build/
+wallx/**/*.so
+build/
+dist/
+
+# 模型权重（不进仓库，训练时从 HuggingFace 下载）
+*.pth
+*.safetensors
+*.bin
+*.pt
+*.ckpt
+
+# 日志
+*.log
+
+# 数据（录制数据集不进仓库）
+data/
+*.parquet
+*.mp4
+videos/
+
+# ROS2 / ascamera 编译产物（colcon 在 camera/ 工作区根产出）
+camera/build/
+camera/install/
+camera/log/
+camera/ascamera/AngstrongsdkLog.txt
+
+# 敏感信息（绝不提交）
+*.pem
+id_rsa*
+id_ed25519*
+*.key
+*.token
+
+# 系统 / 编辑器
+.DS_Store
+.vscode/
+.idea/

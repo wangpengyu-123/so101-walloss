@@ -1,0 +1,62 @@
+--- /home/ubuntu22/so101_walloss/wall-x/wall_x/model/core/vla_mixin.py	2026-10-07 21:28:30.000000000 +0800
++++ modified_files/wall_x/model/core/vla_mixin.py	2026-10-08 21:39:13.662101677 +0800
+@@ -521,7 +521,13 @@
+             }
+ 
+     def add_lora(
+-        self, r=8, lora_alpha=32, target_modules=["q_proj", "v_proj"], lora_dropout=0.1
++        self,
++        r=8,
++        lora_alpha=32,
++        target_modules=["q_proj", "v_proj"],
++        lora_dropout=0.1,
++        action_head_target_modules=None,
++        full_param_train_keywords=None,
+     ):
+         """Add LoRA adapters.
+ 
+@@ -529,6 +535,11 @@
+         wrapped Qwen2_5_VLMoEModel is a bare nn.Module without the HF
+         PreTrainedModel generation API, so PeftModelForCausalLM's init would
+         fail looking for prepare_inputs_for_generation.
++
++        Plan A (round 2): the action head (ActionProcessor) is LoRA'd too so
++        its flow-matching update is preserved by merge. Layers with pretrained
++        weights (w1/w2/w3/action_proj_back) go LoRA; propri_proj is
++        random-init and trains full-param (unfrozen below).
+         """
+         config = LoraConfig(
+             r=r,
+@@ -541,9 +552,29 @@
+         from peft.tuners.lora import LoraModel
+ 
+         self.model = LoraModel(self.model, config, adapter_name="default")
+-        # Log trainable parameter information
+-        trainable = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+-        total = sum(p.numel() for p in self.model.parameters())
++
++        if action_head_target_modules:
++            action_head_config = LoraConfig(
++                r=r,
++                lora_alpha=lora_alpha,
++                target_modules=action_head_target_modules,
++                lora_dropout=lora_dropout,
++                bias="none",
++                task_type="CAUSAL_LM",
++            )
++            self.action_preprocessor = LoraModel(
++                self.action_preprocessor, action_head_config, adapter_name="default"
++            )
++            # LoraModel freezes every wrapped parameter, then unfreezes only
++            # the adapter weights. Unfreeze the full-param-trainable layers
++            # (e.g. propri_proj) that must receive optimizer updates.
++            for name, param in self.action_preprocessor.named_parameters():
++                if any(k in name for k in (full_param_train_keywords or [])):
++                    param.requires_grad = True
++
++        # Log trainable parameter information (both adapters + full-param).
++        trainable = sum(p.numel() for p in self.parameters() if p.requires_grad)
++        total = sum(p.numel() for p in self.parameters())
+         logger.info(
+             f"LoRA trainable params: {trainable:,} / {total:,} "
+             f"({100.0 * trainable / total:.3f}%)"

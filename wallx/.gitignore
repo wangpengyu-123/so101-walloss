@@ -1,0 +1,39 @@
+# Runtime artifacts
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local environments and build outputs
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
+
+# Training / inference outputs
+wandb/
+logs/
+run_logs/
+outputs/
+videos/
+ckpt/
+*.log
+
+# Large local assets
+*.pth
+*.safetensors
+*.mp4
+
+# Editor / OS noise
+.DS_Store
+.vscode/
+
+# Keep exported CUDA kernel sources and Python wrappers tracked:
+#   wall_x/model/core/ops/csrc/
+#   wall_x/model/core/ops/_cuda_ext.py
+#   wall_x/model/core/ops/_cuda_wrappers.py

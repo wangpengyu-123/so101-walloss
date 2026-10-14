@@ -1,0 +1,29 @@
+--- /home/ubuntu22/so101_walloss/wall-x/wall_x/trainer/fsdp_trainer/fsdp_trainer.py	2026-10-07 21:18:27.000000000 +0800
++++ modified_files/wall_x/trainer/fsdp_trainer/fsdp_trainer.py	2026-10-08 21:39:20.056303576 +0800
+@@ -850,11 +850,26 @@
+             f"alpha={self.cfg.model.lora_alpha}, targets={targets}, "
+             f"dropout={self.cfg.model.lora_dropout}"
+         )
++        action_head_targets = getattr(
++            self.cfg.model, "lora_action_head_target_modules", None
++        )
++        if action_head_targets is None:
++            # ActionProcessor leaf Linear layers with pretrained weights.
++            # propri_proj is intentionally absent: it is random-init and trains
++            # full-param (see full_param_train_keywords below).
++            action_head_targets = ["w1", "w2", "w3", "action_proj_back"]
++        full_param_keywords = getattr(
++            self.cfg.model, "full_param_train_keywords", None
++        )
++        if full_param_keywords is None:
++            full_param_keywords = ["propri_proj"]
+         model.add_lora(
+             r=self.cfg.model.lora_r,
+             lora_alpha=self.cfg.model.lora_alpha,
+             target_modules=targets,
+             lora_dropout=self.cfg.model.lora_dropout,
++            action_head_target_modules=action_head_targets,
++            full_param_train_keywords=full_param_keywords,
+         )
+         if hasattr(model, "visual"):
+             model.visual.requires_grad_(False)

@@ -1,0 +1,34 @@
+--- /home/ubuntu22/so101_walloss/wall-x/wall_x/trainer/fsdp_trainer/checkpoint_io.py	2026-10-07 19:45:34.000000000 +0800
++++ modified_files/wall_x/trainer/fsdp_trainer/checkpoint_io.py	2026-10-08 21:39:29.358597053 +0800
+@@ -345,19 +345,22 @@
+ ) -> None:
+     if not is_main:
+         return
+-    model_state = (
+-        model.module.state_dict() if isinstance(model, DDP) else model.state_dict()
+-    )
++    source = model.module if isinstance(model, DDP) else model
++    model_state = source.state_dict()
+     model_state = _filter_frozen_prefixes(model_state, frozen_prefixes, log_fn)
+     if trainable_only:
+-        # LoRA mode: keep only adapter weights (all trainable params are the
+-        # lora_ adapters). Base weights are re-loaded from pretrained_path on
+-        # resume; checkpoint loaders use strict=False, so a LoRA-only
+-        # model.safetensors restores cleanly.
++        # LoRA mode: keep only trainable weights. This includes the lora_*
++        # adapters AND any full-param layers trained alongside them (e.g.
++        # action_preprocessor.propri_proj, which is random-init and cannot be
++        # LoRA'd). Filtering by requires_grad instead of a "lora_" substring is
++        # what preserves those full-param updates across resume and merge.
++        trainable_keys = {
++            name for name, p in source.named_parameters() if p.requires_grad
++        }
+         n_before = len(model_state)
+-        model_state = {k: v for k, v in model_state.items() if "lora_" in k}
++        model_state = {k: v for k, v in model_state.items() if k in trainable_keys}
+         log_fn(
+-            f"[Checkpoint] LoRA mode: keeping only adapter weights "
++            f"[Checkpoint] LoRA mode: keeping only trainable weights "
+             f"({len(model_state)}/{n_before} entries)"
+         )
+     model_state_contiguous = _make_contiguous_and_clone_shared(model_state)
